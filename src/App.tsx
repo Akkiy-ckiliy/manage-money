@@ -24,9 +24,18 @@ interface IncomeItem {
 }
 
 export default function App() {
+  const HAVE_STORAGE_KEY = "time-is-money-have";
+  const FIXED_COST_STORAGE_KEY = "time-is-money-fixed-cost";
+
   // --- 状態管理 (State) ---
-  const [have, setHave] = useState<number>(0); // ベース持ち金
-  const [fixedCost, setFixedCost] = useState<number>(0); // 固定費
+  const [have, setHave] = useState<number>(() => {
+    const savedHave = localStorage.getItem(HAVE_STORAGE_KEY);
+    return savedHave ? Number(savedHave) : 0;
+  }); // ベース持ち金
+  const [fixedCost, setFixedCost] = useState<number>(() => {
+    const savedFixedCost = localStorage.getItem(FIXED_COST_STORAGE_KEY);
+    return savedFixedCost ? Number(savedFixedCost) : 0;
+  }); // 固定費
 
   const [wishList, setWishList] = useState<WishItem[]>([]);
   const [expenseList, setExpenseList] = useState<ExpenseItem[]>([]);
@@ -89,14 +98,21 @@ export default function App() {
     }
   });
 
+  useEffect(() => {
+    localStorage.setItem(HAVE_STORAGE_KEY, String(have));
+  }, [have]);
+
+  useEffect(() => {
+    localStorage.setItem(FIXED_COST_STORAGE_KEY, String(fixedCost));
+  }, [fixedCost]);
+
   // ─── 🧮 【📐 計算ロジック】 ───
   const totalIncome = incomeList.reduce((sum, item) => sum + item.amount, 0);
   const totalPlannedWishCost = wishList
     .filter((item) => item.is_planned_this_month)
     .reduce((sum, item) => sum + item.cost, 0);
   const totalSpent = expenseList.reduce((sum, item) => sum + item.amount, 0);
-  const remainingMoney =
-    have + totalIncome - fixedCost - totalPlannedWishCost - totalSpent;
+  const remainingMoney = have - fixedCost - totalPlannedWishCost - totalSpent;
 
   // ─── ✍️ 【UPLOAD】データ追加・更新ハンドラー ───
 
@@ -167,6 +183,7 @@ export default function App() {
     if (error) return;
 
     await fetchIncomes();
+    setHave((prev) => prev + amount);
     setIncomeInput("");
     setActiveModal("income");
   };
@@ -209,7 +226,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-700 text-gray-100 px-2 py-4 sm:p-6 font-sans relative">
+    <div className="min-h-screen bg-gray-700 text-gray-100 px-2 py-4 sm:p-6 font-sans relative select-none">
       <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6">
         {/* ヘッダー */}
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-800 pb-1 gap-2">
@@ -224,12 +241,9 @@ export default function App() {
             <label className="text-[10px] sm:text-xs text-gray-400 block mb-0.5">
               ベース持ち金
             </label>
-            <input
-              type="number"
-              value={have}
-              onChange={(e) => setHave(Number(e.target.value))}
-              className="bg-transparent text-base sm:text-xl font-semibold text-emerald-400 focus:outline-none w-full border-b border-dashed border-gray-700 pb-0.5"
-            />
+            <span className="block text-base sm:text-xl font-semibold text-emerald-400 w-full border-b border-dashed border-gray-700 pb-0.5">
+              ¥{have.toLocaleString()}
+            </span>
           </div>
           <div className="bg-gray-900 p-3 sm:p-4 rounded-xl border border-gray-800">
             <label className="text-[10px] sm:text-xs text-gray-400 block mb-0.5">
@@ -385,7 +399,7 @@ export default function App() {
                 wishList.map((item) => (
                   <div
                     key={item.id}
-                    className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${item.is_planned_this_month ? "bg-amber-950/20 border-amber-500/50" : "bg-gray-950 border-gray-800/80"}`}
+                    className={`select-text flex items-center justify-between p-2.5 rounded-xl border transition-all ${item.is_planned_this_month ? "bg-amber-950/20 border-amber-500/50" : "bg-gray-950 border-gray-800/80"}`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
                       <input
@@ -422,7 +436,7 @@ export default function App() {
                 expenseList.map((item) => (
                   <div
                     key={item.id}
-                    className="flex justify-between items-center p-2.5 bg-gray-950 border border-gray-800/50 rounded-lg gap-2 font-mono"
+                    className="select-text flex justify-between items-center p-2.5 bg-gray-950 border border-gray-800/50 rounded-lg gap-2 font-mono"
                   >
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className="text-xs sm:text-sm text-gray-200 truncate">
@@ -455,7 +469,7 @@ export default function App() {
                 incomeList.map((item) => (
                   <div
                     key={item.id}
-                    className="flex justify-between items-center p-2.5 bg-gray-950 border border-gray-800/50 rounded-lg gap-2 font-mono"
+                    className="select-text flex justify-between items-center p-2.5 bg-gray-950 border border-gray-800/50 rounded-lg gap-2 font-mono"
                   >
                     <div className="flex flex-col min-w-0 flex-1">
                       <span className="text-xs sm:text-sm text-gray-200 truncate">
